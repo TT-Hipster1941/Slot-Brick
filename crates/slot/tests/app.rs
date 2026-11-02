@@ -1982,6 +1982,52 @@ fn on_the_brick_a_cart_with_no_line_opens_at_actual_size_in_4_3() {
 }
 
 #[test]
+#[cfg(feature = "brick")]
+fn on_the_brick_the_game_boy_shoulders_step_through_full_original_and_integer() {
+    let d = common::tmp_root_with_gb_carts(&["Tetris", "Zzz"]);
+    let mut s = session_playing(d.path());
+    let mut t = 100;
+    let mut press = |s: &mut Session, b: Btn| {
+        s.feed([RawEvent::Down(b)], t);
+        s.feed([RawEvent::Up(b)], t + 20);
+        t += 40;
+    };
+    press(&mut s, Btn::R1);
+    assert_eq!(video_mode_for(d.path(), "Tetris"), VideoMode::Integer);
+    assert_eq!(s.app().toast(), Some(slot_ui::Toast::PictureInteger));
+    assert_eq!(
+        s.app().source_rect_in((1024, 768)),
+        slot::video_mode::source_rect_in(Platform::Gb, VideoMode::Integer, (1024, 768)),
+        "the picture is not at a whole multiple of the panel"
+    );
+    press(&mut s, Btn::R1);
+    assert_eq!(video_mode_for(d.path(), "Tetris"), VideoMode::Integer, "R1 stays at the end");
+    press(&mut s, Btn::L1);
+    assert_eq!(video_mode_for(d.path(), "Tetris"), VideoMode::Actual);
+    press(&mut s, Btn::L1);
+    assert_eq!(video_mode_for(d.path(), "Tetris"), VideoMode::Stretch);
+    press(&mut s, Btn::L1);
+    assert_eq!(video_mode_for(d.path(), "Tetris"), VideoMode::Stretch, "L1 stays at the start");
+}
+
+#[test]
+#[cfg(feature = "brick")]
+fn the_integer_scale_setting_opens_game_boy_games_at_integer_scale() {
+    let d = common::tmp_root_with_gb_carts(&["Tetris", "Zzz"]);
+    write_slot_state(
+        d.path(),
+        &SlotState { clock_set: true, gb_integer: true, ..SlotState::default() },
+    )
+    .unwrap();
+    let s = session_playing(d.path());
+    assert_eq!(
+        s.app().source_rect_in((1024, 768)),
+        slot::video_mode::source_rect_in(Platform::Gb, VideoMode::Integer, (1024, 768)),
+        "a game with no saved choice ignored the setting"
+    );
+}
+
+#[test]
 fn the_power_menus_own_buttons_never_reach_the_game() {
     let d = common::tmp_root_with_carts(&["Emerald", "Zzz"]);
     let mut s = session_playing(d.path());

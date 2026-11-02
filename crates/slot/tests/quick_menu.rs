@@ -271,6 +271,7 @@ fn screen_opens_a_page_per_system_each_with_its_own_page_and_b_comes_back_up() {
     for want in [
         QuickRow::GbColourCorrection,
         QuickRow::GbPalettes,
+        QuickRow::GbIntegerScale,
         QuickRow::GbOverlay,
         QuickRow::GbcOverlay,
         QuickRow::GbShader,
@@ -724,6 +725,23 @@ fn gb_palettes_flips_on_either_arrow_and_saves() {
             a.quick_value(QuickRow::GbPalettes),
             Some(QuickValue::flag(want))
         );
+    }
+}
+
+#[cfg(feature = "brick")]
+#[test]
+fn integer_scale_flips_on_either_arrow_and_saves() {
+    let (d, mut a, _) = on_carousel();
+    open_at(&mut a, QuickRow::GbIntegerScale);
+    assert_eq!(a.quick_value(QuickRow::GbIntegerScale), Some(QuickValue::Off));
+    for (btn, want) in [(Btn::Right, true), (Btn::Left, false), (Btn::Left, true)] {
+        press(&mut a, btn);
+        assert_eq!(
+            read_slot_state(d.path()).gb_integer,
+            want,
+            "{btn:?} never reached the card"
+        );
+        assert_eq!(a.quick_value(QuickRow::GbIntegerScale), Some(QuickValue::flag(want)));
     }
 }
 

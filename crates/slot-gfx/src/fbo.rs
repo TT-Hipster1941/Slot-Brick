@@ -198,6 +198,11 @@ impl Compositor {
         self.game.set_power(t);
     }
 
+    /// The size, in panel pixels, of the target the frame is drawn into.
+    pub fn target_size(&self) -> (u32, u32) {
+        self.size
+    }
+
     pub fn set_game_source_rect(&mut self, rect: [f32; 4]) {
         self.game.set_source_rect(rect);
     }

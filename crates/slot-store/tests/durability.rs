@@ -221,9 +221,21 @@ fn a_card_from_before_the_settings_keeps_all_its_values() {
             rewind: true,
             gb_palettes: false,
             gb_palette: GbPalette::DEFAULT,
+            gb_integer: false,
             overlays: Default::default(),
         }
     );
+}
+
+#[test]
+fn integer_scale_is_off_until_chosen_and_comes_back_from_the_card() {
+    let d = tmp_root();
+    assert!(!read_slot_state(d.path()).gb_integer);
+    let s = SlotState { clock_set: true, gb_integer: true, ..SlotState::default() };
+    write_slot_state(d.path(), &s).unwrap();
+    assert!(read_slot_state(d.path()).gb_integer);
+    std::fs::write(d.path().join("Config/slot.state"), "gb_integer=2\n").unwrap();
+    assert!(!read_slot_state(d.path()).gb_integer, "a bad value turned it on");
 }
 
 #[test]

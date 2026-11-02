@@ -82,6 +82,8 @@ pub struct SlotState {
     pub rewind: bool,
     pub gb_palettes: bool,
     pub gb_palette: GbPalette,
+    /// Game Boy / Game Boy Color games with no saved picture choice open at integer scale.
+    pub gb_integer: bool,
     /// The overlay chosen for each system, by file name in Overlays/<system>, in the order of
     /// Platform::ALL; None is off.
     pub overlays: [Option<String>; Platform::ALL.len()],
@@ -214,6 +216,7 @@ impl Default for SlotState {
             rewind: true,
             gb_palettes: false,
             gb_palette: GbPalette::DEFAULT,
+            gb_integer: false,
             overlays: Default::default(),
         }
     }
@@ -233,7 +236,7 @@ pub fn read_slot_state(root: &Path) -> SlotState {
 
 pub fn write_slot_state(root: &Path, s: &SlotState) -> std::io::Result<()> {
     let text = format!(
-        "cart={}\ncart_platform={}\nbrightness={}\nblue_light={}\nvolume={}\nvolume_hp={}\nmuted={}\nmuted_hp={}\nclock_set={}\nutc_offset_min={}\nauto_clock={}\nlibrary_sort={}\nfavorites_only={}\nplay_time_hours={}\ntitle_card={}\nrumble={}\nff_speed={}\nff_sound={}\ncolour_correction_gb={}\ncolour_correction_gba={}\nshader_gba={}\nshader_gb={}\nshader_nes={}\nshader_snes={}\nshader_ps1={}\nps1_dithering={}\neject_save={}\nautosave_min={}\nbattery_shutdown={}\nturbo={}\nrewind={}\ngb_palettes={}\ngb_palette={}\n",
+        "cart={}\ncart_platform={}\nbrightness={}\nblue_light={}\nvolume={}\nvolume_hp={}\nmuted={}\nmuted_hp={}\nclock_set={}\nutc_offset_min={}\nauto_clock={}\nlibrary_sort={}\nfavorites_only={}\nplay_time_hours={}\ntitle_card={}\nrumble={}\nff_speed={}\nff_sound={}\ncolour_correction_gb={}\ncolour_correction_gba={}\nshader_gba={}\nshader_gb={}\nshader_nes={}\nshader_snes={}\nshader_ps1={}\nps1_dithering={}\neject_save={}\nautosave_min={}\nbattery_shutdown={}\nturbo={}\nrewind={}\ngb_palettes={}\ngb_palette={}\ngb_integer={}\n",
         s.cart.as_deref().unwrap_or(""),
         s.cart_platform.map_or(String::new(), platform_key),
         s.brightness,
@@ -266,7 +269,8 @@ pub fn write_slot_state(root: &Path, s: &SlotState) -> std::io::Result<()> {
         s.turbo as u8,
         s.rewind as u8,
         s.gb_palettes as u8,
-        s.gb_palette.core_name()
+        s.gb_palette.core_name(),
+        s.gb_integer as u8
     );
     let mut text = text;
     for platform in Platform::ALL {
@@ -331,6 +335,7 @@ fn parse(text: &str) -> Option<SlotState> {
     let mut rewind = None;
     let mut gb_palettes = None;
     let mut gb_palette = None;
+    let mut gb_integer = None;
     let mut overlays: [Option<String>; Platform::ALL.len()] = Default::default();
     for line in text.lines().filter(|l| !l.is_empty()) {
         let Some((key, value)) = line.split_once('=') else {
@@ -381,6 +386,7 @@ fn parse(text: &str) -> Option<SlotState> {
             "rewind" => rewind = flag(value),
             "gb_palettes" => gb_palettes = flag(value),
             "gb_palette" => gb_palette = GbPalette::parse(value),
+            "gb_integer" => gb_integer = flag(value),
             "shader_gb" => shader_gb = Shader::parse(value).filter(|s| Shader::GB.contains(s)),
             "shader_nes" => shader_nes = Shader::parse(value).filter(|s| Shader::NES.contains(s)),
             "shader_snes" => shader_snes = Shader::parse(value).filter(|s| Shader::NES.contains(s)),
@@ -439,6 +445,7 @@ fn parse(text: &str) -> Option<SlotState> {
         rewind: rewind.unwrap_or(fallback.rewind),
         gb_palettes: gb_palettes.unwrap_or(fallback.gb_palettes),
         gb_palette: gb_palette.unwrap_or(fallback.gb_palette),
+        gb_integer: gb_integer.unwrap_or(fallback.gb_integer),
         overlays,
     })
 }

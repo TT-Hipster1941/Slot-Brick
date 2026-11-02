@@ -480,8 +480,11 @@ impl Session {
         self.app.set_core(core);
         self.app.set_platform(platform);
         self.app
-            .set_video_mode(crate::video_mode::video_mode_for_platform(
-                &self.root, stem, platform,
+            .set_video_mode(crate::video_mode::video_mode_with(
+                &self.root,
+                stem,
+                platform,
+                self.app.gb_integer(),
             ));
         self.app.set_link_loaded(serial);
         let resume = (!self.app.starting_clean())

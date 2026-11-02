@@ -90,10 +90,12 @@ pub enum QuickRow {
     SoundLabel,
     SoundVolume,
     UpdateCheck,
+    /// Screen → Game Boy / GBC: games with no saved picture choice open at integer scale.
+    GbIntegerScale,
 }
 
 impl QuickRow {
-    pub const ALL: [QuickRow; 77] = [
+    pub const ALL: [QuickRow; 78] = [
         QuickRow::FastForward,
         QuickRow::FastForwardSound,
         QuickRow::Screen,
@@ -171,6 +173,7 @@ impl QuickRow {
         QuickRow::SoundLabel,
         QuickRow::SoundVolume,
         QuickRow::UpdateCheck,
+        QuickRow::GbIntegerScale,
     ];
 
     #[cfg(not(feature = "brick"))]
@@ -221,8 +224,14 @@ impl QuickRow {
     /// Screen: a page for each system, holding that system's own picture settings.
     pub const SCREEN: [QuickRow; 5] =
         [QuickRow::ScreenGb, QuickRow::ScreenGba, QuickRow::ScreenNes, QuickRow::ScreenSnes, QuickRow::ScreenPs1];
-    pub const SCREEN_GB: [QuickRow; 5] =
-        [QuickRow::GbShader, QuickRow::GbColourCorrection, QuickRow::GbPalettes, QuickRow::GbOverlay, QuickRow::GbcOverlay];
+    pub const SCREEN_GB: [QuickRow; 6] = [
+        QuickRow::GbShader,
+        QuickRow::GbColourCorrection,
+        QuickRow::GbPalettes,
+        QuickRow::GbIntegerScale,
+        QuickRow::GbOverlay,
+        QuickRow::GbcOverlay,
+    ];
     pub const SCREEN_GBA: [QuickRow; 3] = [QuickRow::GbaShader, QuickRow::GbaColourCorrection, QuickRow::GbaOverlay];
     pub const SCREEN_NES: [QuickRow; 2] = [QuickRow::NesShader, QuickRow::NesOverlay];
     pub const SCREEN_SNES: [QuickRow; 2] = [QuickRow::SnesShader, QuickRow::SnesOverlay];
@@ -305,6 +314,7 @@ impl QuickRow {
             QuickRow::GbShader
             | QuickRow::GbColourCorrection
             | QuickRow::GbPalettes
+            | QuickRow::GbIntegerScale
             | QuickRow::GbOverlay
             | QuickRow::GbcOverlay => &QuickRow::SCREEN_GB,
             QuickRow::GbaShader | QuickRow::GbaColourCorrection | QuickRow::GbaOverlay => &QuickRow::SCREEN_GBA,
@@ -475,6 +485,7 @@ impl QuickRow {
             QuickRow::Turbo => "Turbo Buttons",
             QuickRow::Rewind => "Rewind",
             QuickRow::GbPalettes => "GB Palettes",
+            QuickRow::GbIntegerScale => "Integer Scale",
         }
     }
 

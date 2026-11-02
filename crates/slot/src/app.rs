@@ -1275,6 +1275,11 @@ impl App {
             QuickRow::GbColourCorrection => Some(QuickValue::flag(self.state.colour_correction_gb)),
             QuickRow::GbaColourCorrection => Some(QuickValue::flag(self.state.colour_correction_gba)),
             QuickRow::GbPalettes => Some(QuickValue::flag(self.state.gb_palettes)),
+            QuickRow::GbIntegerScale => Some(if cfg!(feature = "brick") {
+                QuickValue::flag(self.state.gb_integer)
+            } else {
+                QuickValue::Unavailable
+            }),
             QuickRow::GbaShader => Some(shader_value(self.state.shader_gba)),
             QuickRow::GbShader => Some(shader_value(self.state.shader_gb)),
             QuickRow::NesShader => Some(shader_value(self.state.shader_nes)),
@@ -1595,11 +1600,21 @@ impl App {
     }
 
     pub fn source_rect(&self) -> [f32; 4] {
+        self.source_rect_in((OUT_W, OUT_H))
+    }
+
+    /// As `source_rect`, for a target of `panel` pixels: integer scale is whole panel pixels.
+    pub fn source_rect_in(&self, panel: (u32, u32)) -> [f32; 4] {
         match self.overlay_window() {
             // An overlay decides where the picture goes: into its window.
             Some(window) => crate::overlay::source_rect(self.platform, window),
-            None => video_mode::source_rect(self.platform, self.video_mode),
+            None => video_mode::source_rect_in(self.platform, self.video_mode, panel),
         }
+    }
+
+    /// Screen → Game Boy / GBC → Integer Scale: how games with no saved choice open.
+    pub fn gb_integer(&self) -> bool {
+        self.state.gb_integer
     }
 
     /// The overlay the game being played should have over it: the one chosen for its system.
@@ -1730,6 +1745,36 @@ impl App {
         true
     }
 
+    /// L1 / R1 on a console without shoulder buttons: along full screen, original size and, on
+    /// a Game Boy, integer scale. At either end it stays where it is.
+    fn step_picture(&mut self, right: bool) {
+        let steps: &[VideoMode] = if video_mode::has_integer(self.platform) {
+            &[VideoMode::Stretch, VideoMode::Actual, VideoMode::Integer]
+        } else {
+            &[VideoMode::Stretch, VideoMode::Actual]
+        };
+        let was = self.video_mode;
+        let at = steps.iter().position(|m| *m == was).unwrap_or(1);
+        let to = if right { steps[(at + 1).min(steps.len() - 1)] } else { steps[at.saturating_sub(1)] };
+        if self.set_picture(to) && to == VideoMode::Integer && was != to {
+            self.hud.toast(Toast::PictureInteger, self.now());
+        }
+    }
+
+    /// The Integer Scale setting changed: a Game Boy game being played with no saved choice of
+    /// its own follows it at once; the others pick it up when they are next opened.
+    fn gb_integer_changed(&mut self, on: bool) {
+        if !video_mode::has_integer(self.platform) {
+            return;
+        }
+        let (Some(root), Phase::Playing { cart }) = (self.root.clone(), &self.phase) else {
+            return;
+        };
+        if slot_store::ini::value(&root, video_mode::VIDEO_MODE_FILE, cart).is_none() {
+            self.video_mode = video_mode::default_scale(self.platform, on);
+        }
+    }
+
     /// Home+L1 / Home+R1: the previous or next overlay for the system being played, named as it
     /// goes on. With no overlays for it, there is nothing to change to.
     fn step_overlay_in_game(&mut self, right: bool) {
@@ -1757,7 +1802,7 @@ impl App {
         }
         let (to, said) = match self.video_mode {
             VideoMode::Actual => (VideoMode::Stretch, Toast::PictureFull),
-            VideoMode::Stretch => (VideoMode::Actual, Toast::PictureOriginal),
+            VideoMode::Stretch | VideoMode::Integer => (VideoMode::Actual, Toast::PictureOriginal),
         };
         if self.set_picture(to) {
             self.hud.toast(said, self.now());
@@ -2261,10 +2306,10 @@ impl App {
             Phase::Inserting { .. } if action == Action::Eject => self.eject(),
             Phase::Playing { .. } => match action {
                 Action::GbaDown(Btn::L1) if self.slot_owns_the_shoulders() => {
-                    self.set_picture(VideoMode::Stretch);
+                    self.step_picture(false);
                 }
                 Action::GbaDown(Btn::R1) if self.slot_owns_the_shoulders() => {
-                    self.set_picture(VideoMode::Actual);
+                    self.step_picture(true);
                 }
                 Action::Eject => self.eject(),
                 Action::GameMenu => self.game_menu_shortcut(),
@@ -2459,6 +2504,7 @@ impl App {
             | QuickRow::SnesOverlay
             | QuickRow::Ps1Overlay
             | QuickRow::GbPalettes
+            | QuickRow::GbIntegerScale
             | QuickRow::AutoClock
             | QuickRow::UpdateCheck
             | QuickRow::LibrarySort
@@ -2579,6 +2625,11 @@ impl App {
             QuickRow::Turbo => s.turbo = !s.turbo,
             QuickRow::Rewind => s.rewind = !s.rewind,
             QuickRow::GbPalettes => s.gb_palettes = !s.gb_palettes,
+            QuickRow::GbIntegerScale => {
+                s.gb_integer = !s.gb_integer;
+                let on = s.gb_integer;
+                self.gb_integer_changed(on);
+            }
             QuickRow::LibrarySort => {
                 let all = slot_store::LibrarySort::ALL;
                 let at = all.iter().position(|v| *v == s.library_sort).unwrap_or(0);

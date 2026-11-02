@@ -764,7 +764,7 @@ impl Frontend {
         compositor.set_frame_split(self.session.app().frame_split());
         let (cw, ch) = self.session.app().canvas();
         compositor.set_game_canvas(cw, ch);
-        compositor.set_game_source_rect(self.session.app().source_rect());
+        compositor.set_game_source_rect(self.session.app().source_rect_in(compositor.target_size()));
         compositor.begin_frame();
         if self.draw_rebuild(compositor) {
             return;
